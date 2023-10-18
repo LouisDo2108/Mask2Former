@@ -195,6 +195,9 @@ class MaskFormer(nn.Module):
         images = ImageList.from_tensors(images, self.size_divisibility)
 
         features = self.backbone(images.tensor)
+        # pred_logits 4 torch.Size([4, 100, 5])
+        # pred_masks 4 torch.Size([4, 100, 256, 256])
+        # aux_outputs dict_keys(['pred_logits', 'pred_masks'])
         outputs = self.sem_seg_head(features)
 
         if self.training:
@@ -204,7 +207,6 @@ class MaskFormer(nn.Module):
                 targets = self.prepare_targets(gt_instances, images)
             else:
                 targets = None
-
             # bipartite matching-based loss
             losses = self.criterion(outputs, targets)
 

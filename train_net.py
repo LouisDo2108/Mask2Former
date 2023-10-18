@@ -31,6 +31,8 @@ from detectron2.engine import (
     default_argument_parser,
     default_setup,
     launch,
+    hooks,
+    PeriodicWriter
 )
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
@@ -58,6 +60,8 @@ from mask2former import (
     add_maskformer2_config,
 )
 
+# OSFormer
+# from mask2former.data.dataset_mappers import DatasetMapperWithBasis
 
 class Trainer(DefaultTrainer):
     """
@@ -152,12 +156,16 @@ class Trainer(DefaultTrainer):
         if cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_semantic":
             mapper = MaskFormerSemanticDatasetMapper(cfg, True)
             return build_detection_train_loader(cfg, mapper=mapper)
+        # elif cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_cod10k":
+        #     mapper = DatasetMapperWithBasis(cfg, True)
+        #     return build_detection_train_loader(cfg, mapper=mapper)
         # Panoptic segmentation dataset mapper
         elif cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_panoptic":
             mapper = MaskFormerPanopticDatasetMapper(cfg, True)
             return build_detection_train_loader(cfg, mapper=mapper)
         # Instance segmentation dataset mapper
-        elif cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_instance":
+        elif cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_instance" or \
+            cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_cod10k":
             mapper = MaskFormerInstanceDatasetMapper(cfg, True)
             return build_detection_train_loader(cfg, mapper=mapper)
         # coco instance segmentation lsj new baseline
@@ -290,6 +298,8 @@ def setup(args):
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
+    from mask2former.data.datasets.cis import register_dataset
+    register_dataset()
     # Setup logger for "mask_former" module
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="mask2former")
     return cfg
@@ -311,6 +321,22 @@ def main(args):
         return res
 
     trainer = Trainer(cfg)
+    # [Modification]
+    trainer.register_hooks(
+        [
+            hooks.BestCheckpointer(
+                cfg.TEST.EVAL_PERIOD,
+                checkpointer=trainer.checkpointer,
+                val_metric="segm/AP", 
+                mode="max",
+                file_prefix="model_best",
+            ),
+        ]
+    )
+    for h in trainer._hooks:
+        if isinstance(h, PeriodicWriter):
+            h._period = 1000  # [modification] less logging
+    
     trainer.resume_or_load(resume=args.resume)
     return trainer.train()
 
