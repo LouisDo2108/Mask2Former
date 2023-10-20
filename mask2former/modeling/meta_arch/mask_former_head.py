@@ -136,7 +136,7 @@ class MaskFormerHead(nn.Module):
 
 
 @SEM_SEG_HEADS_REGISTRY.register()
-class MaskFormerDualDecoderHead(nn.Module):
+class MaskFormerDualDecoderHeadWithZissWeighting(nn.Module):
 
     _version = 2
 
@@ -239,24 +239,39 @@ class MaskFormerDualDecoderHead(nn.Module):
             ),
         }
 
-    def forward(self, features, mask=None):
-        return self.layers(features, mask)
+    def forward(self, features, mask=None, hardness_weight=None):
+        return self.layers(features, mask, hardness_weight)
 
     def layers(self, features, mask=None, hardness_weight=None):
-        mask_features, transformer_encoder_features, multi_scale_features, hardness_pred = self.pixel_decoder.forward_features(features)
+        mask_features, transformer_encoder_features, multi_scale_features = self.pixel_decoder.forward_features(features)
         
+        # If hardness_weight is None, raise error, 
+        # since there is no hardness_pred
+        if hardness_weight is None:
+            raise ValueError("hardness_weight is None")
+        
+        predictions = {}
         if self.transformer_in_feature == "multi_scale_pixel_decoder": # Default
-            if hardness_weight: 
-                predictions_easy = self.predictor_easy(
-                    multi_scale_features, mask_features, mask,
-                    hardness_weight=1.0 - hardness_weight
-                )
-                predictions_hard = self.predictor_hard(
-                    multi_scale_features, mask_features, mask,
-                    hardness_weight=hardness_weight
-                )
-                print("Done")
-                exit(0)
+            predictions_easy = self.predictor_easy(
+                multi_scale_features, mask_features, mask,
+                hardness_weight=(1.0-hardness_weight),
+            )
+            predictions_hard = self.predictor_hard(
+                multi_scale_features, mask_features, mask,
+                hardness_weight=hardness_weight,
+            )
+            
+            # Summing easy and hard predictions
+            for k in predictions_easy.keys():
+                if k != 'aux_outputs':
+                    predictions[k] = predictions_easy[k] + predictions_hard[k]
+                else:
+                    predictions['aux_outputs'] = []
+                    for aux_easy, aux_hard in zip(predictions_easy[k], predictions_hard[k]):
+                        predictions['aux_outputs'].append({
+                            "pred_logits": aux_easy["pred_logits"] + aux_hard["pred_logits"],
+                            "pred_masks": aux_easy["pred_masks"] + aux_hard["pred_masks"],
+                        })
         else:
             if self.transformer_in_feature == "transformer_encoder":
                 assert (
@@ -267,4 +282,51 @@ class MaskFormerDualDecoderHead(nn.Module):
                 predictions = self.predictor(mask_features, mask_features, mask)
             else:
                 predictions = self.predictor(features[self.transformer_in_feature], mask_features, mask)
-        return predictions_easy, predictions_hard, hardness_pred
+        return predictions
+    
+
+@SEM_SEG_HEADS_REGISTRY.register()
+class MaskFormerDualDecoderHeadWithZissRanking(MaskFormerDualDecoderHeadWithZissWeighting):
+    def forward(self, features, mask=None, hardness_weight=None):
+        return self.layers(features, mask, hardness_weight)
+
+    def layers(self, features, mask=None, hardness_weight=None):
+        mask_features, transformer_encoder_features, multi_scale_features, hardness_pred = self.pixel_decoder.forward_features(features)
+        
+        # If hardness_weight is None, use the hardness_pred instead
+        if hardness_weight is None:
+            hardness_weight = hardness_pred.sigmoid().squeeze(-1) # Same shape as the gt: tensor size of (2)
+        
+        predictions = {}
+        if self.transformer_in_feature == "multi_scale_pixel_decoder": # Default
+            predictions_easy = self.predictor_easy(
+                multi_scale_features, mask_features, mask,
+                hardness_weight=(1.0-hardness_weight),
+            )
+            predictions_hard = self.predictor_hard(
+                multi_scale_features, mask_features, mask,
+                hardness_weight=hardness_weight,
+            )
+            
+            # Summing easy and hard predictions
+            for k in predictions_easy.keys():
+                if k != 'aux_outputs':
+                    predictions[k] = predictions_easy[k] + predictions_hard[k]
+                else:
+                    predictions['aux_outputs'] = []
+                    for aux_easy, aux_hard in zip(predictions_easy[k], predictions_hard[k]):
+                        predictions['aux_outputs'].append({
+                            "pred_logits": aux_easy["pred_logits"] + aux_hard["pred_logits"],
+                            "pred_masks": aux_easy["pred_masks"] + aux_hard["pred_masks"],
+                        })
+        else:
+            if self.transformer_in_feature == "transformer_encoder":
+                assert (
+                    transformer_encoder_features is not None
+                ), "Please use the TransformerEncoderPixelDecoder."
+                predictions = self.predictor(transformer_encoder_features, mask_features, mask)
+            elif self.transformer_in_feature == "pixel_embedding":
+                predictions = self.predictor(mask_features, mask_features, mask)
+            else:
+                predictions = self.predictor(features[self.transformer_in_feature], mask_features, mask)
+        return predictions, hardness_pred

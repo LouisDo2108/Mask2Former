@@ -462,7 +462,7 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
 
 
 @TRANSFORMER_DECODER_REGISTRY.register()
-class MultiScaleMaskedTransformerDecoderWithHardness(MultiScaleMaskedTransformerDecoder):
+class MultiScaleMaskedTransformerDecoderWithZissWeighting(MultiScaleMaskedTransformerDecoder):
     def forward(self, x, mask_features, mask = None, hardness_weight=None):
         # x is a list of multi-scale feature
         assert len(x) == self.num_feature_levels
@@ -523,20 +523,40 @@ class MultiScaleMaskedTransformerDecoderWithHardness(MultiScaleMaskedTransformer
             predictions_mask.append(outputs_mask)
 
         assert len(predictions_class) == self.num_layers + 1
-        print("hardness_weight", hardness_weight)
-        print(predictions_class[-1].shape)
-        print(predictions_mask[-1].shape)
-        print(len(self._set_aux_loss(
-                predictions_class if self.mask_classification else None, predictions_mask
-            )))
-        print("inside transformer decoder with hardness")
-        exit(0)
+        
+        if self.mask_classification:
+            aux_outputs = self._set_aux_loss(predictions_class, predictions_mask, hardness_weight=hardness_weight)
+        else:
+            aux_outputs = self._set_aux_loss(None, predictions_mask, hardness_weight=hardness_weight)
 
         out = {
-            'pred_logits': predictions_class[-1],
-            'pred_masks': predictions_mask[-1],
-            'aux_outputs': self._set_aux_loss(
-                predictions_class if self.mask_classification else None, predictions_mask
-            )
+            'pred_logits': predictions_class[-1]*hardness_weight if hardness_weight is not None else predictions_class[-1],
+            'pred_masks': predictions_mask[-1]*hardness_weight.view(-1, 1, 1, 1) 
+                            if hardness_weight is not None else predictions_class[-1],
+            'aux_outputs': aux_outputs
+            # 'aux_outputs': self._set_aux_loss(
+            #     predictions_class if self.mask_classification else None, predictions_mask
+            # )
         }
         return out
+    
+    @torch.jit.unused
+    def _set_aux_loss(self, outputs_class, outputs_seg_masks, hardness_weight=None):
+        # this is a workaround to make torchscript happy, as torchscript
+        # doesn't support dictionary with non-homogeneous values, such
+        # as a dict having both a Tensor and a list.
+        
+        if self.mask_classification:
+            return [
+                {
+                    "pred_logits": a*hardness_weight if hardness_weight is not None else a, 
+                    "pred_masks": b*hardness_weight.view(-1, 1, 1, 1) if hardness_weight is not None else b, 
+                }
+                for a, b in zip(outputs_class[:-1], outputs_seg_masks[:-1])
+            ]
+        else:
+            return [{
+                "pred_masks": 
+                    b*hardness_weight.view(-1, 1, 1, 1) if hardness_weight is not None else b
+                } for b in outputs_seg_masks[:-1]
+            ]
