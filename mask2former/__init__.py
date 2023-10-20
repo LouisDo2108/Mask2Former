@@ -20,6 +20,9 @@ from .data.dataset_mappers.mask_former_semantic_dataset_mapper import (
 
 # models
 from .maskformer_model import MaskFormer
+from .maskformer_model_ziss_dual_decoder import MaskFormerZissDualDecoder
+from .maskformer_model_ziss_dual_pixeldecoder import MaskFormerZissDualPixelDecoder
+
 from .test_time_augmentation import SemanticSegmentorWithTTA
 
 # evaluation

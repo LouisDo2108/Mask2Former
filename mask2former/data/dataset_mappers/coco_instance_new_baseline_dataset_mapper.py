@@ -12,6 +12,9 @@ from detectron2.data import transforms as T
 from detectron2.data.transforms import TransformGen
 from detectron2.structures import BitMasks, Instances
 
+from .detection_utils import (annotations_to_instances, build_augmentation,
+                              transform_instance_annotations)
+
 from pycocotools import mask as coco_mask
 
 __all__ = ["COCOInstanceNewBaselineDatasetMapper"]
@@ -162,13 +165,23 @@ class COCOInstanceNewBaselineDatasetMapper:
 
             # USER: Implement additional transformations if you have other types of data
             annos = [
-                utils.transform_instance_annotations(obj, transforms, image_shape)
+                # utils.transform_instance_annotations(obj, transforms, image_shape)
+                transform_instance_annotations(
+                    obj,
+                    transforms,
+                    image_shape,
+                )
                 for obj in dataset_dict.pop("annotations")
                 if obj.get("iscrowd", 0) == 0
             ]
             # NOTE: does not support BitMask due to augmentation
             # Current BitMask cannot handle empty objects
-            instances = utils.annotations_to_instances(annos, image_shape)
+            
+            # instances = utils.annotations_to_instances(annos, image_shape)
+            instances = annotations_to_instances(
+                annos, image_shape
+            )
+            
             # After transforms such as cropping are applied, the bounding box may no longer
             # tightly bound the object. As an example, imagine a triangle object
             # [(0,0), (2,0), (0,2)] cropped by a box [(1,0),(2,2)] (XYXY format). The tight
