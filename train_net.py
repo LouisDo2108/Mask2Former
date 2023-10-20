@@ -331,8 +331,7 @@ def main(args):
     trainer.register_hooks(
         [
             hooks.BestCheckpointer(
-                # cfg.TEST.EVAL_PERIOD,
-                100,
+                cfg.TEST.EVAL_PERIOD,
                 checkpointer=trainer.checkpointer,
                 val_metric="segm/AP", 
                 mode="max",
