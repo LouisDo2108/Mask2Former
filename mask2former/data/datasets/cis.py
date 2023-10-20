@@ -14,7 +14,7 @@ COD10K_Ziss: COD10K with Ziss score
 CAMO: CAMO dataset
 """
 
-COD10K_DATASET_ROOT = "/home/dtpthao/data_unzip/camo/COD10K-v3"
+COD10K_DATASET_ROOT = "/home/dtpthao/workspace/camo/Camouflage_CVPR2024/data/COD10K-v3"
 CAMO_DATASET_ROOT = "/home/dtpthao/data_unzip/camo/camo++"
 
 # COD10K train 
@@ -24,13 +24,14 @@ SUBSET_COD10K_TRAIN_JSON = os.path.join(COD10K_DATASET_ROOT, "json/Subset/CAM_In
 
 # COD10K test
 COD10K_TEST_PATH = os.path.join(COD10K_DATASET_ROOT, "Test/Image")
-COD10K_TEST_JSON = os.path.join(COD10K_DATASET_ROOT, "Test/CAM_Instance_Test.json")
-SUBSET_COD10K_TEST_JSON = os.path.join(COD10K_DATASET_ROOT, "json/Subset/CAM_Instance_Test_subset.json")
+# COD10K_TEST_JSON = os.path.join(COD10K_DATASET_ROOT, "Test/CAM_Instance_Test.json")
+COD10K_TEST_JSON = os.path.join(COD10K_DATASET_ROOT, "json/COD10K_Ziss/CAM_Instance_Test_Ziss_new.json")
+SUBSET_COD10K_TEST_JSON = os.path.join(COD10K_DATASET_ROOT, "json/Subset/CAM_Instance_Test_subset_new.json")
 
 # NC4K test
 NC4K_ROOT = "/home/dtpthao/data_unzip/camo/NC4K"
 NC4K_PATH = os.path.join(NC4K_ROOT, "test/image")
-NC4K_JSON = os.path.join(NC4K_ROOT, "nc4k_test.json")
+NC4K_JSON = os.path.join(NC4K_ROOT, "nc4k_test_new.json")
 SUBSET_NC4K_JSON = os.path.join(COD10K_DATASET_ROOT, "json/Subset/NC4K_subset.json")
 
 # Addition train and test dataset
@@ -55,7 +56,7 @@ CODR4_SEMI_TRAIN_JSON = os.path.join(COD10K_DATASET_ROOT, "json/COD10K/CAM_Insta
 
 # COD10K_ziss
 COD10K_ZISS_TRAIN_PATH = os.path.join(COD10K_DATASET_ROOT, "Train/Image")
-COD10K_ZISS_TRAIN_JSON = os.path.join(COD10K_DATASET_ROOT, "json/COD10K_Ziss/CAM_Instance_Train_Ziss.json")
+COD10K_ZISS_TRAIN_JSON = os.path.join(COD10K_DATASET_ROOT, "json/COD10K_Ziss/CAM_Instance_Train_Ziss_new.json")
 
 # CAMO
 CAMO_TRAIN_PATH = os.path.join(CAMO_DATASET_ROOT, "Train/Image")

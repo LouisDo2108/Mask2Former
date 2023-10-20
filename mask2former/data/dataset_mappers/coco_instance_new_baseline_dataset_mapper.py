@@ -112,7 +112,10 @@ class COCOInstanceNewBaselineDatasetMapper:
     @classmethod
     def from_config(cls, cfg, is_train=True):
         # Build augmentation
-        tfm_gens = build_transform_gen(cfg, is_train)
+        if not is_train:
+            tfm_gens = []
+        else:
+            tfm_gens = build_transform_gen(cfg, is_train)
 
         ret = {
             "is_train": is_train,
@@ -150,10 +153,10 @@ class COCOInstanceNewBaselineDatasetMapper:
         dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
         dataset_dict["padding_mask"] = torch.as_tensor(np.ascontiguousarray(padding_mask))
 
-        if not self.is_train:
-            # USER: Modify this if you want to keep them for some reason.
-            dataset_dict.pop("annotations", None)
-            return dataset_dict
+        # if not self.is_train:
+        #     # USER: Modify this if you want to keep them for some reason.
+        #     dataset_dict.pop("annotations", None)
+        #     return dataset_dict
 
         if "annotations" in dataset_dict:
             # USER: Modify this if you want to keep them for some reason.

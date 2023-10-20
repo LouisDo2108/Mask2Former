@@ -25,7 +25,7 @@ import torch
 import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import MetadataCatalog, build_detection_train_loader
+from detectron2.data import MetadataCatalog, build_detection_train_loader, build_detection_test_loader
 from detectron2.engine import (
     DefaultTrainer,
     default_argument_parser,
@@ -156,9 +156,6 @@ class Trainer(DefaultTrainer):
         if cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_semantic":
             mapper = MaskFormerSemanticDatasetMapper(cfg, True)
             return build_detection_train_loader(cfg, mapper=mapper)
-        # elif cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_cod10k":
-        #     mapper = DatasetMapperWithBasis(cfg, True)
-        #     return build_detection_train_loader(cfg, mapper=mapper)
         # Panoptic segmentation dataset mapper
         elif cfg.INPUT.DATASET_MAPPER_NAME == "mask_former_panoptic":
             mapper = MaskFormerPanopticDatasetMapper(cfg, True)
@@ -179,6 +176,15 @@ class Trainer(DefaultTrainer):
         else:
             mapper = None
             return build_detection_train_loader(cfg, mapper=mapper)
+        
+    @classmethod
+    def build_test_loader(cls, cfg, dataset_name):
+        if cfg.INPUT.DATASET_MAPPER_NAME == "coco_instance_lsj":
+            mapper = COCOInstanceNewBaselineDatasetMapper(cfg, False)
+            return build_detection_test_loader(cfg, dataset_name, mapper=mapper)
+        else:
+            return super().build_test_loader(cfg, dataset_name)
+    
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
@@ -325,7 +331,8 @@ def main(args):
     trainer.register_hooks(
         [
             hooks.BestCheckpointer(
-                cfg.TEST.EVAL_PERIOD,
+                # cfg.TEST.EVAL_PERIOD,
+                100,
                 checkpointer=trainer.checkpointer,
                 val_metric="segm/AP", 
                 mode="max",

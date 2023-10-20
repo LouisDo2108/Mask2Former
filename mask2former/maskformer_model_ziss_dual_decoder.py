@@ -584,7 +584,6 @@ class MaskFormerZissRankingDualDecoder(nn.Module):
             
             # hardness loss
             if hardness_pred is not None:
-                print("with ziss ranking")
                 loss_hardness = (
                     1.0 *
                     smooth_l1_loss(

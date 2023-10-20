@@ -319,6 +319,7 @@ class MaskFormerDualDecoderHeadWithZissRanking(MaskFormerDualDecoderHeadWithZiss
                             "pred_logits": aux_easy["pred_logits"] + aux_hard["pred_logits"],
                             "pred_masks": aux_easy["pred_masks"] + aux_hard["pred_masks"],
                         })
+            del predictions_easy, predictions_hard
         else:
             if self.transformer_in_feature == "transformer_encoder":
                 assert (
